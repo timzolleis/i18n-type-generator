@@ -1,8 +1,8 @@
 import {readConfig} from "./configuration-loader";
 import {getAvailableNamespaces, getReferenceLocaleNamespaces} from "./translation-file-loader";
 import * as path from "node:path";
+import {config} from "../index";
 
-const config = readConfig()
 
 /**
  * Generates the import statement for resources file

@@ -1,9 +1,9 @@
 import {readConfig} from "./configuration-loader";
 import * as fs from "fs";
 import * as path from "node:path";
+import {config} from "../index";
 
 
-const config = readConfig()
 
 /**
  * Gets all available locales that are not excluded by configuration
@@ -52,4 +52,12 @@ export function getAvailableNamespacesForLocale(locale: string){
     const localePath = path.join(config.localeRoot, locale)
     const files = fs.readdirSync(localePath)
     return files.map(file => file.split(".")[0])
+}
+
+/**
+ * Gets the content of a translation file for a given namespace and locale
+ */
+export function getTranslationFileContent({namespace, locale}: {namespace: string, locale: string}){
+    const filePath = path.join(config.localeRoot, locale, `${namespace}.json`)
+    return fs.readFileSync(filePath, "utf-8")
 }
