@@ -13,7 +13,7 @@ const defaultResourceFileContent = `export const resources = {} as const`;
 export async function writeOrUpdateResourceFile() {
   const resourceFilePath = config.outputFile;
   const resourceFileExists = fs.existsSync(resourceFilePath);
-  let lines: string[] = [];
+  let lines: string[]
   const oldFileContent = fs.readFileSync(resourceFilePath, "utf8");
   if (resourceFileExists) {
     lines = removeOldImports(oldFileContent);

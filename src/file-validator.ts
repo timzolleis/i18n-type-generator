@@ -183,13 +183,6 @@ function getMissingKeys(target: JSONObject, reference: JSONObject, path = "") {
   return missingKeys;
 }
 
-function getDeep(key: string) {
-  const parts = key.split(".");
-  return parts.reduce((acc, part) => {
-    return { [part]: acc };
-  }, {});
-}
-
 function setDeep(obj: JSONObject, key: string, value: any) {
   const parts = key.split(".");
   let currentPart = obj;
