@@ -31,6 +31,20 @@ export function removeUnusedKeys() {
     }
 }
 
+export function sortKeys(){
+    const locales = getAvailableLocales()
+    for (const locale of locales) {
+        const namespaces = getAvailableNamespacesForLocale(locale)
+        for (const namespace of namespaces) {
+            const referencePath = path.join(config.localeRoot, config.referenceLocale, `${namespace}.json`)
+            const filePath = path.join(config.localeRoot, locale, `${namespace}.json`)
+            sortFile(referencePath)
+            sortFile(filePath)
+        }
+    }
+}
+
+
 function removeUnusedKeysFromObject(target: JSONObject, reference: JSONObject) {
     for (const key in target) {
         //Check if the key is present in the reference

@@ -10,7 +10,7 @@ const configSchema = z.object({
         replaceMissingWithValue: z.string().default("REPLACE_ME"),
         runFormat: z.boolean().default(true),
         reportFileName: z.string().default("i18n-type-report.json"),
-        removeUnusedKeys: z.boolean().default(false),
+        removeUnusedKeys: z.boolean().default(true),
         sortKeys: z.boolean().default(true),
         referenceLocale: z.string().default("en"),
         excludeLocales: z.array(z.string()).default([]),
@@ -24,7 +24,6 @@ export function readConfig() {
         const parsedJson = JSON.parse(configFile)
         return configSchema.parse(parsedJson)
     } catch (e) {
-        console.log("Unable to parse config file. Using defaults.")
         return configSchema.parse({})
     }
 

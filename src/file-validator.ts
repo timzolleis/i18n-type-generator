@@ -7,6 +7,7 @@ import {
 import * as path from "node:path";
 import * as fs from "fs";
 import {config} from "../index";
+import {safeParse} from "./command-utils/json";
 
 export type MissingNamespace = {
     locale: string;
@@ -52,19 +53,20 @@ export function validateKeys() {
     const locales = getAvailableLocales();
     const result = locales.map(locale => {
         const fileReports = referenceLocaleNamespaces.map(referenceNamespace => {
-            const referenceNamespaceContent = JSON.parse(getTranslationFileContent({
-                namespace: referenceNamespace,
-                locale: config.referenceLocale
-            }))
+            const referenceFilePath = path.join(config.localeRoot, config.referenceLocale, `${referenceNamespace}.json`)
+            const referenceNamespaceContent = safeParse(getTranslationFileContent({namespace: referenceNamespace, locale: config.referenceLocale}), referenceFilePath )
             const localeNamespacePath = path.join(config.localeRoot, locale, `${referenceNamespace}.json`)
             let localeNamespace = {}
             try {
-                localeNamespace = JSON.parse(getTranslationFileContent({namespace: referenceNamespace, locale}))
+                localeNamespace = safeParse(getTranslationFileContent({namespace: referenceNamespace, locale}), localeNamespacePath)
             } catch (e) {
                 //Ignore error
             }
             //Compare the reference locale with the current locale
             const missingKeys = getMissingKeys(localeNamespace, referenceNamespaceContent)
+
+
+
             return {
                 namespace: referenceNamespace,
                 filePath: localeNamespacePath,
@@ -138,7 +140,7 @@ function getMissingKeys(target: JSONObject, reference: JSONObject, path = "") {
     for (const key in reference) {
         //If thats not an object, we want to add it to the missing keys
         if (typeof reference[key] !== "object") {
-            const isMissing = !target?.hasOwnProperty(key)
+            const isMissing = target?.[key] === undefined
             isMissing && missingKeys.push(`${path}${key}`)
         } else {
             //If it is an object, we want to recursively call this function

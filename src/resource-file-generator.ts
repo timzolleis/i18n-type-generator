@@ -36,11 +36,9 @@ export async function writeOrUpdateResourceFile() {
     const oldChecksum = generateChecksum(oldFileContent)
     const newChecksum = generateChecksum(contentToWrite)
     if (oldChecksum === newChecksum) {
-        console.log("✅ Resource file is up to date")
         return
     }
     fs.writeFileSync(resourceFilePath, contentToWrite)
-    console.log("✅ Successfully updated resource file")
 
 }
 
