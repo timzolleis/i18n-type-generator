@@ -10,6 +10,8 @@ const configSchema = z.object({
         replaceMissingWithValue: z.string().default("REPLACE_ME"),
         runFormat: z.boolean().default(true),
         reportFileName: z.string().default("i18n-type-report.json"),
+        removeUnusedKeys: z.boolean().default(false),
+        sortKeys: z.boolean().default(true),
         referenceLocale: z.string().default("en"),
         excludeLocales: z.array(z.string()).default([]),
         excludeNamespaces: z.array(z.string()).default([]),

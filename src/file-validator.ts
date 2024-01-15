@@ -20,43 +20,28 @@ export type MissingNamespace = {
 export function validateNamespaces() {
     const mode = config.mode
     const missingNamespaces = getMissingNamespaces()
-    if (missingNamespaces.length === 0) {
-        return {missingNamespaces}
+    if (missingNamespaces.length !== 0) {
+        switch (mode) {
+            case "write": {
+                //Generate the file for each missing namespace
+                for (const missingNamespace of missingNamespaces) {
+                    const filePath = path.join(config.localeRoot, missingNamespace.locale, `${missingNamespace.namespace}.json`)
+                    fs.writeFileSync(filePath, JSON.stringify({}))
+                }
+                break;
+            }
+            case "print": {
+                //Print the missing namespaces
+                missingNamespaces.forEach(missingNamespace => {
+                    console.log(`  - ${missingNamespace.namespace} in ${missingNamespace.locale}`)
+                })
+                break;
+            }
+        }
     }
     //Depending on the mode, we want to create the missing namespaces or just return a report
-    switch (mode) {
-        case "write": {
-            //Generate the file for each missing namespace
-            missingNamespaces.forEach(missingNamespace => {
-                const filePath = path.join(config.localeRoot, missingNamespace.locale, `${missingNamespace.namespace}.json`)
-                //Write the file
-                fs.writeFileSync(filePath, JSON.stringify({}))
-            })
-            return {missingNamespaces}
-        }
-        case "print": {
-            //Print the missing namespaces
-            console.log("Missing namespaces:")
-            missingNamespaces.forEach(missingNamespace => {
-                console.log(`  - ${missingNamespace.namespace} in ${missingNamespace.locale}`)
-            })
-            return {missingNamespaces}
-        }
-        default: {
-            return {missingNamespaces}
-        }
-    }
+    return {missingNamespaces}
 }
-
-
-type MissingKeys = {
-    files: {
-        path: string;
-        locale: string;
-        missingKeys: string[];
-    }[];
-}
-
 /**
  * Validates the presence of all keys in all namespaces of all locales
  */
@@ -75,7 +60,7 @@ export function validateKeys() {
             let localeNamespace = {}
             try {
                 localeNamespace = JSON.parse(getTranslationFileContent({namespace: referenceNamespace, locale}))
-            } catch (e){
+            } catch (e) {
                 //Ignore error
             }
             //Compare the reference locale with the current locale
@@ -92,26 +77,25 @@ export function validateKeys() {
     switch (config.mode) {
         //If we are in write mode, we want to write the missing keys to the respective files
         case "write": {
-            result.forEach(localeResult => {
-                //We only want to write the files that have missing keys
+            for (const localeResult of result) {
                 const files = localeResult.files.filter(file => file.missingKeys.length > 0)
-                files.forEach(file => {
-                    const filePath = file.filePath
-                    let fileContent = {}
+                for (const file of files) {
+                    let content = {}
                     try {
-                        fileContent = JSON.parse(getTranslationFileContent({namespace: file.namespace, locale: file.locale}))
+                        content = JSON.parse(getTranslationFileContent({
+                            namespace: file.namespace,
+                            locale: file.locale
+                        }))
                     } catch (e){
                         //Ignore error
                     }
-                    //For each missing key, we want to add it to the file
                     const sorted = sortDotNotatedKeys(file.missingKeys)
-                    sorted.forEach(missingKey => {
-                      setDeep(fileContent, missingKey, config.replaceMissingWithValue)
-                    })
-                    //Write the file
-                    fs.writeFileSync(filePath, JSON.stringify(fileContent, null, 2))
-                })
-            })
+                    for (const missingKey of sorted) {
+                        setDeep(content, missingKey, config.replaceMissingWithValue)
+                    }
+                    fs.writeFileSync(file.filePath, JSON.stringify(content, null, 2))
+                }
+            }
             return result
         }
         default: {
@@ -124,53 +108,49 @@ export function validateKeys() {
  * Validates the presence of all namespaces in all locales
  */
 export function getMissingNamespaces() {
-    const missingNamespaces: MissingNamespace[] = []
     //Get all namespaces of the reference locale
     const referenceLocaleNamespaces = getReferenceLocaleNamespaces();
     //Validate that the namespaces is present in all locales
     const locales = getAvailableLocales();
-    locales.forEach(locale => {
+    return locales.flatMap(locale => {
         const namespaces = getAvailableNamespacesForLocale(locale)
-        referenceLocaleNamespaces.forEach(namespace => {
-            if (!namespaces.includes(namespace) && !config.excludeNamespaces.includes(namespace)) {
-                missingNamespaces.push({
-                    locale,
-                    namespace,
-                    filePath: path.join(config.localeRoot, locale, `${namespace}.json`)
-                })
+        const missing = namespaces.filter(namespace => !referenceLocaleNamespaces.includes(namespace))
+        return missing.map(namespace => {
+            return {
+                locale,
+                namespace,
+                filePath: path.join(config.localeRoot, locale, `${namespace}.json`)
             }
         })
+
     })
-    return missingNamespaces
 }
 
 
-type JSONObject = { [key: string]: JSONObject }
+export type JSONObject = { [key: string]: JSONObject }
 
 /**
  * Deeply compare two JSON objects and return an array of missing keys
  */
 
-//TODO: Fix not accepting : in keys
 function getMissingKeys(target: JSONObject, reference: JSONObject, path = "") {
     const missingKeys: string[] = [];
     for (const key in reference) {
-        const callback = () => getMissingKeys(target?.[key],reference[key], `${path}${key}.`).map(value => value.replace(":.", "."))
-        if (target?.[key] === undefined) {
-            missingKeys.push(`${path}${key}`.replace(":.", ".").replace(":", ""));
-            if (typeof reference[key] === 'object') {
-                missingKeys.push(...callback());
-            }
-        } else if (typeof target[key] === 'object') {
-            missingKeys.push(...callback());
+        //If thats not an object, we want to add it to the missing keys
+        if (typeof reference[key] !== "object") {
+            const isMissing = !target?.hasOwnProperty(key)
+            isMissing && missingKeys.push(`${path}${key}`)
+        } else {
+            //If it is an object, we want to recursively call this function
+            const result = getMissingKeys(target?.[key], reference[key], `${path}${key}.`)
+            missingKeys.push(...result)
         }
     }
     return missingKeys;
 }
 
 
-
-function getDeep(key: string){
+function getDeep(key: string) {
     const parts = key.split(".")
     return parts.reduce((acc, part) => {
         return {[part]: acc}
@@ -183,7 +163,6 @@ function setDeep(obj: JSONObject, key: string, value: any) {
 
     for (let i = 0; i < parts.length - 1; i++) {
         const part = parts[i];
-
         // If the part doesn't exist, or it's not an object, create/initiate it
         if (!currentPart[part] || typeof currentPart[part] !== 'object') {
             currentPart[part] = {};
